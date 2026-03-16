@@ -3,10 +3,12 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 public class MatchTheTerror extends JFrame {
     private List<Card> cards;
     private Card firstSelectedCard = null;
@@ -20,6 +22,7 @@ public class MatchTheTerror extends JFrame {
     
     private Font customTitleFont;
     private Font customCardFont;
+    private BufferedImage backgroundImage;
 
     public MatchTheTerror() {
         try {
@@ -42,7 +45,29 @@ public class MatchTheTerror extends JFrame {
         // Initialize pairs
         initializeCards();
 
-        getContentPane().setBackground(Color.BLACK);
+        try {
+            backgroundImage = ImageIO.read(new File("1920px-Eugène_Delacroix_-_La_liberté_guidant_le_peuple.jpg"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        JPanel backgroundPane = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                if (backgroundImage != null) {
+                    g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+                } else {
+                    g.setColor(Color.BLACK);
+                    g.fillRect(0, 0, getWidth(), getHeight());
+                }
+                
+                // Add a semi-transparent dark overlay to make cards and text stand out
+                g.setColor(new Color(0, 0, 0, 150));
+                g.fillRect(0, 0, getWidth(), getHeight());
+            }
+        };
+        setContentPane(backgroundPane);
         
         // Setup Title Label
         JLabel titleLabel = new JLabel("MATCH THE TERROR", SwingConstants.CENTER);
@@ -57,7 +82,7 @@ public class MatchTheTerror extends JFrame {
         JPanel gridPanel = new JPanel();
         gridPanel.setLayout(new GridLayout(4, 4, 10, 10));
         gridPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        gridPanel.setBackground(Color.BLACK);
+        gridPanel.setOpaque(false);
 
         for (Card card : cards) {
             gridPanel.add(card);
