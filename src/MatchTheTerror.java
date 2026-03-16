@@ -2,6 +2,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -14,9 +15,25 @@ public class MatchTheTerror extends JFrame {
     private final int totalPairs = 8;
     
     // Timer for delaying the flip back when cards do not match
+    // Timer for delaying the flip back when cards do not match
     private Timer timer;
+    
+    private Font customTitleFont;
+    private Font customCardFont;
 
     public MatchTheTerror() {
+        try {
+            Font baseFont = Font.createFont(Font.TRUETYPE_FONT, new File("GrimeSlimeDripping-Regular.ttf"));
+            GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(baseFont);
+            
+            customTitleFont = baseFont.deriveFont(Font.PLAIN, 56f);
+            customCardFont = baseFont.deriveFont(Font.PLAIN, 34f);
+        } catch (Exception e) {
+            e.printStackTrace();
+            customTitleFont = new Font("Serif", Font.BOLD | Font.ITALIC, 46);
+            customCardFont = new Font("Arial", Font.BOLD, 30);
+        }
+
         setTitle("Match The Terror");
         setSize(800, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -25,9 +42,18 @@ public class MatchTheTerror extends JFrame {
         // Initialize pairs
         initializeCards();
 
-        // Setup the grid UI
         getContentPane().setBackground(Color.BLACK);
         
+        // Setup Title Label
+        JLabel titleLabel = new JLabel("MATCH THE TERROR", SwingConstants.CENTER);
+        titleLabel.setFont(customTitleFont);
+        titleLabel.setForeground(new Color(255, 60, 60)); // Crimson red
+        // Add a subtle drop shadow effect by using HTML
+        titleLabel.setText("<html><div style='text-shadow: 2px 2px #000000;'>MATCH THE TERROR</div></html>");
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(20, 10, 10, 10));
+        add(titleLabel, BorderLayout.NORTH);
+
+        // Setup the grid UI
         JPanel gridPanel = new JPanel();
         gridPanel.setLayout(new GridLayout(4, 4, 10, 10));
         gridPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -155,17 +181,16 @@ public class MatchTheTerror extends JFrame {
         
         private void setFaceDownAppearance() {
             setText("?");
-            setFont(new Font("Arial", Font.BOLD, 30));
-            setBackground(new Color(200, 160, 255)); // Light purple
-            setForeground(Color.WHITE);
+            setFont(customCardFont);
+            setForeground(new Color(220, 220, 220));
             setIcon(null);
         }
         
         private void setFaceUpAppearance() {
+            // Using a plain text first line to ensure the HTML formatting stays nicely centered with custom fonts
             setText("<html><center>" + faceText.replaceAll(" ", "<br>") + "</center></html>");
-            setFont(new Font("Arial", Font.BOLD, 30));
-            setBackground(new Color(230, 210, 255)); // Lighter purple
-            setForeground(Color.BLACK);
+            setFont(customCardFont);
+            setForeground(Color.WHITE);
         }
 
         public int getPairId() {
@@ -178,8 +203,7 @@ public class MatchTheTerror extends JFrame {
 
         public void setMatched(boolean matched) {
             isMatched = matched;
-            setBackground(new Color(150, 255, 150)); // Light green
-            setForeground(Color.BLACK);
+            setForeground(new Color(200, 255, 200)); // Pale green text
             setEnabled(false); // Disable interaction once matched
         }
 
@@ -234,10 +258,21 @@ public class MatchTheTerror extends JFrame {
                 g2.translate(w / 2.0 * (1.0 - sx), 0);
                 g2.scale(sx, 1.0);
             }
-            
-            // Draw rounded background
-            g2.setColor(getBackground());
+            // Draw rounded background with gradient
+            GradientPaint gp;
+            if (isMatched) {
+                gp = new GradientPaint(0, 0, new Color(50, 120, 50), 0, h, new Color(10, 40, 10)); // Toxic green gradient
+            } else if (isFaceUp) {
+                gp = new GradientPaint(0, 0, new Color(150, 20, 20), 0, h, new Color(50, 5, 5)); // Blood red gradient
+            } else {
+                gp = new GradientPaint(0, 0, new Color(60, 60, 60), 0, h, new Color(20, 20, 20)); // Dark iron gradient
+            }
+            g2.setPaint(gp);
             g2.fillRoundRect(0, 0, w, h, 30, 30);
+            
+            // Draw a subtle thin border
+            g2.setColor(new Color(255, 255, 255, 40));
+            g2.drawRoundRect(0, 0, w-1, h-1, 30, 30);
             
             super.paintComponent(g2);
             g2.dispose();
