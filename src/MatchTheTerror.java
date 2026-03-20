@@ -2,6 +2,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.geom.RoundRectangle2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -30,15 +31,15 @@ public class MatchTheTerror extends JFrame {
             GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(baseFont);
             
             customTitleFont = baseFont.deriveFont(Font.PLAIN, 56f);
-            customCardFont = baseFont.deriveFont(Font.PLAIN, 34f);
+            customCardFont = baseFont.deriveFont(Font.PLAIN, 28f);
         } catch (Exception e) {
             e.printStackTrace();
             customTitleFont = new Font("Serif", Font.BOLD | Font.ITALIC, 46);
-            customCardFont = new Font("Arial", Font.BOLD, 30);
+            customCardFont = new Font("Arial", Font.BOLD, 24);
         }
 
         setTitle("Match The Terror");
-        setSize(800, 600);
+        setSize(800, 800);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
@@ -46,7 +47,7 @@ public class MatchTheTerror extends JFrame {
         initializeCards();
 
         try {
-            backgroundImage = ImageIO.read(new File("1920px-Eugène_Delacroix_-_La_liberté_guidant_le_peuple.jpg"));
+            backgroundImage = ImageIO.read(new File("bg.jpg"));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -88,7 +89,11 @@ public class MatchTheTerror extends JFrame {
             gridPanel.add(card);
         }
 
-        add(gridPanel, BorderLayout.CENTER);
+        JPanel wrapperPanel = new JPanel(new GridBagLayout());
+        wrapperPanel.setOpaque(false);
+        wrapperPanel.add(gridPanel);
+        
+        add(wrapperPanel, BorderLayout.CENTER);
 
         // Setup the timer for flipping cards back if they don't match
         timer = new Timer(1000, new ActionListener() {
@@ -103,24 +108,24 @@ public class MatchTheTerror extends JFrame {
     private void initializeCards() {
         cards = new ArrayList<>();
         
-        // Define the pairs: {Dictator, Country/Flag}
+        // Define the pairs: {Dictator, Country Display, Dictator Image, Flag Image}
         String[][] data = {
-            {"Adolf Hitler", "Germany"},
-            {"Joseph Stalin", "Soviet Union"},
-            {"Benito Mussolini", "Italy"},
-            {"Mao Zedong", "China"},
-            {"Saddam Hussein", "Iraq"},
-            {"Idi Amin", "Uganda"},
-            {"Pol Pot", "Cambodia"},
-            {"Kim Jong-il", "North Korea"}
+            {"Adolf Hitler", "Germany", "hitler.jpg", "flag_germany.png"},
+            {"Joseph Stalin", "Soviet Union", "stalin.jpg", "flag_ussr.png"},
+            {"Benito Mussolini", "Italy", "mussolini.jpg", "flag_italy.png"},
+            {"Mao Zedong", "China", "mao.jpg", "flag_china.png"},
+            {"Saddam Hussein", "Iraq", "saddam.jpg", "flag_iraq.png"},
+            {"Idi Amin", "Uganda", "idi.jpg", "flag_uganda.jpg"},
+            {"Donald Trump", "United States", "donald.jpg", "flag_us.jpg"},
+            {"Kim Jong Un", "North Korea", "kim.jpg", "flag_nk.jpg"}
         };
 
         int id = 0;
         for (String[] pair : data) {
             // Dictator Card
-            Card dictatorCard = new Card(id, pair[0], "Dictator");
+            Card dictatorCard = new Card(id, pair[0], "Dictator", pair[2]);
             // Country Card
-            Card countryCard = new Card(id, pair[1], "Country");
+            Card countryCard = new Card(id, pair[1], "Country", pair[3]);
             
             cards.add(dictatorCard);
             cards.add(countryCard);
@@ -154,9 +159,9 @@ public class MatchTheTerror extends JFrame {
     private class Card extends JButton implements ActionListener {
         private int pairId;
         private String faceText;
-        private String type; // "Dictator" or "Country"
         private boolean isFaceUp = false;
         private boolean isMatched = false;
+        private Image faceImage;
         
         // Animation fields
         private Timer animTimer;
@@ -165,16 +170,27 @@ public class MatchTheTerror extends JFrame {
         private int flippingHalf = 0; // 0=none, 1=shrinking, 2=expanding
         private boolean targetFaceUp;
         
-        public Card(int pairId, String faceText, String type) {
+        public Card(int pairId, String faceText, String type, String imageFilename) {
             this.pairId = pairId;
             this.faceText = faceText;
-            this.type = type;
+            
+            if (imageFilename != null) {
+                try {
+                    faceImage = ImageIO.read(new File("images/" + imageFilename));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                if (faceImage == null) {
+                    faceImage = new ImageIcon("images/" + imageFilename).getImage();
+                }
+            }
             
             // Initial appearance (face down)
             setFaceDownAppearance();
             setFocusPainted(false);
             setContentAreaFilled(false);
             setBorderPainted(false);
+            setPreferredSize(new Dimension(200, 200));
             
             addActionListener(this);
             
@@ -212,9 +228,17 @@ public class MatchTheTerror extends JFrame {
         }
         
         private void setFaceUpAppearance() {
-            // Using a plain text first line to ensure the HTML formatting stays nicely centered with custom fonts
-            setText("<html><center>" + faceText.replaceAll(" ", "<br>") + "</center></html>");
-            setFont(customCardFont);
+            if (faceImage != null) {
+                setText("");
+                setFont(customCardFont);
+            } else {
+                setText("<html><center>" + faceText.replaceAll(" ", "<br>") + "</center></html>");
+                if (faceText.length() <= 2) { // Likely an emoji or short code
+                    setFont(new Font("SansSerif", Font.PLAIN, 65));
+                } else {
+                    setFont(customCardFont);
+                }
+            }
             setForeground(Color.WHITE);
         }
 
@@ -294,6 +318,15 @@ public class MatchTheTerror extends JFrame {
             }
             g2.setPaint(gp);
             g2.fillRoundRect(0, 0, w, h, 30, 30);
+            
+            if ((isFaceUp || isMatched) && faceImage != null) {
+                int pad = 15;
+                Shape oldClip = g2.getClip();
+                RoundRectangle2D rect = new RoundRectangle2D.Float(pad, pad, w - 2*pad, h - 2*pad, 15, 15);
+                g2.setClip(rect);
+                g2.drawImage(faceImage, pad, pad, w - 2*pad, h - 2*pad, this);
+                g2.setClip(oldClip);
+            }
             
             // Draw a subtle thin border
             g2.setColor(new Color(255, 255, 255, 40));
