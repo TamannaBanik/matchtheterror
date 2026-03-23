@@ -9,4 +9,4 @@ java -cp src MatchTheTerror
 ```
 
 ## Game Overview
- ![Game Screenshot](/images/screenshot.png)
+ ![Game Screenshot](/images/Screenshot.png)
