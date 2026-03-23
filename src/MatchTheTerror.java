@@ -10,17 +10,20 @@ import java.util.Collections;
 import java.util.List;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+
 public class MatchTheTerror extends JFrame {
     private List<Card> cards;
     private Card firstSelectedCard = null;
     private Card secondSelectedCard = null;
     private int pairsFound = 0;
     private final int totalPairs = 8;
-    
-    // Timer for delaying the flip back when cards do not match
-    // Timer for delaying the flip back when cards do not match
+
     private Timer timer;
-    
+
+    private long startTime = 0;
+    private JLabel displayTimerLabel;
+    private Timer gameTimer;
+
     private Font customTitleFont;
     private Font customCardFont;
     private BufferedImage backgroundImage;
@@ -29,7 +32,7 @@ public class MatchTheTerror extends JFrame {
         try {
             Font baseFont = Font.createFont(Font.TRUETYPE_FONT, new File("GrimeSlimeDripping-Regular.ttf"));
             GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(baseFont);
-            
+
             customTitleFont = baseFont.deriveFont(Font.PLAIN, 56f);
             customCardFont = baseFont.deriveFont(Font.PLAIN, 28f);
         } catch (Exception e) {
@@ -43,7 +46,6 @@ public class MatchTheTerror extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        // Initialize pairs
         initializeCards();
 
         try {
@@ -62,24 +64,44 @@ public class MatchTheTerror extends JFrame {
                     g.setColor(Color.BLACK);
                     g.fillRect(0, 0, getWidth(), getHeight());
                 }
-                
-                // Add a semi-transparent dark overlay to make cards and text stand out
+
                 g.setColor(new Color(0, 0, 0, 150));
                 g.fillRect(0, 0, getWidth(), getHeight());
             }
         };
         setContentPane(backgroundPane);
-        
-        // Setup Title Label
+
+        JPanel topPanel = new JPanel();
+        topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
+        topPanel.setOpaque(false);
+
         JLabel titleLabel = new JLabel("MATCH THE TERROR", SwingConstants.CENTER);
         titleLabel.setFont(customTitleFont);
-        titleLabel.setForeground(new Color(255, 60, 60)); // Crimson red
-        // Add a subtle drop shadow effect by using HTML
+        titleLabel.setForeground(new Color(255, 60, 60));
         titleLabel.setText("<html><div style='text-shadow: 2px 2px #000000;'>MATCH THE TERROR</div></html>");
-        titleLabel.setBorder(BorderFactory.createEmptyBorder(20, 10, 10, 10));
-        add(titleLabel, BorderLayout.NORTH);
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(20, 10, 5, 10));
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        topPanel.add(titleLabel);
 
-        // Setup the grid UI
+        displayTimerLabel = new JLabel("Time: 00:00", SwingConstants.CENTER);
+        displayTimerLabel
+                .setFont(customCardFont != null ? customCardFont.deriveFont(28f) : new Font("Arial", Font.BOLD, 28));
+        displayTimerLabel.setForeground(new Color(255, 60, 60));
+        displayTimerLabel.setBorder(BorderFactory.createEmptyBorder(0, 10, 10, 10));
+        displayTimerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        topPanel.add(displayTimerLabel);
+
+        add(topPanel, BorderLayout.NORTH);
+
+        gameTimer = new Timer(1000, e -> {
+            if (startTime > 0) {
+                long timeTaken = (System.currentTimeMillis() - startTime) / 1000;
+                long minutes = timeTaken / 60;
+                long seconds = timeTaken % 60;
+                displayTimerLabel.setText(String.format("Time: %02d:%02d", minutes, seconds));
+            }
+        });
+
         JPanel gridPanel = new JPanel();
         gridPanel.setLayout(new GridLayout(4, 4, 10, 10));
         gridPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -89,13 +111,26 @@ public class MatchTheTerror extends JFrame {
             gridPanel.add(card);
         }
 
-        JPanel wrapperPanel = new JPanel(new GridBagLayout());
-        wrapperPanel.setOpaque(false);
-        wrapperPanel.add(gridPanel);
-        
-        add(wrapperPanel, BorderLayout.CENTER);
+        JPanel centerPanel = new JPanel(null) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+            }
 
-        // Setup the timer for flipping cards back if they don't match
+            @Override
+            public void doLayout() {
+                int size = Math.min(getWidth(), getHeight());
+                int x = (getWidth() - size) / 2;
+                int y = (getHeight() - size) / 2;
+                gridPanel.setBounds(x, y, size, size);
+            }
+        };
+
+        centerPanel.setOpaque(false);
+        centerPanel.add(gridPanel);
+
+        add(centerPanel, BorderLayout.CENTER);
+
         timer = new Timer(1000, new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -107,47 +142,43 @@ public class MatchTheTerror extends JFrame {
 
     private void initializeCards() {
         cards = new ArrayList<>();
-        
-        // Define the pairs: {Dictator, Country Display, Dictator Image, Flag Image}
+
         String[][] data = {
-            {"Adolf Hitler", "Germany", "hitler.jpg", "flag_germany.png"},
-            {"Joseph Stalin", "Soviet Union", "stalin.jpg", "flag_ussr.png"},
-            {"Benito Mussolini", "Italy", "mussolini.jpg", "flag_italy.png"},
-            {"Mao Zedong", "China", "mao.jpg", "flag_china.png"},
-            {"Saddam Hussein", "Iraq", "saddam.jpg", "flag_iraq.png"},
-            {"Idi Amin", "Uganda", "idi.jpg", "flag_uganda.jpg"},
-            {"Donald Trump", "United States", "donald.jpg", "flag_us.jpg"},
-            {"Kim Jong Un", "North Korea", "kim.jpg", "flag_nk.jpg"}
+                { "Adolf Hitler", "Germany", "hitler.jpg", "flag_germany.png" },
+                { "Joseph Stalin", "Soviet Union", "stalin.jpg", "flag_ussr.png" },
+                { "Benito Mussolini", "Italy", "mussolini.jpg", "flag_italy.png" },
+                { "Mao Zedong", "China", "mao.jpg", "flag_china.png" },
+                { "Saddam Hussein", "Iraq", "saddam.jpg", "flag_iraq.png" },
+                { "Idi Amin", "Uganda", "idi.jpg", "flag_uganda.jpg" },
+                { "Donald Trump", "United States", "donald.jpg", "flag_us.jpg" },
+                { "Kim Jong Un", "North Korea", "kim.jpg", "flag_nk.jpg" }
         };
 
         int id = 0;
         for (String[] pair : data) {
-            // Dictator Card
             Card dictatorCard = new Card(id, pair[0], "Dictator", pair[2]);
-            // Country Card
             Card countryCard = new Card(id, pair[1], "Country", pair[3]);
-            
+
             cards.add(dictatorCard);
             cards.add(countryCard);
             id++;
         }
 
-        // Shuffle the cards
         Collections.shuffle(cards);
     }
 
     private void checkMatch() {
         if (firstSelectedCard.getPairId() == secondSelectedCard.getPairId()) {
-            // Match found!
             firstSelectedCard.setMatched(true);
             secondSelectedCard.setMatched(true);
             pairsFound++;
 
             if (pairsFound == totalPairs) {
-                JOptionPane.showMessageDialog(this, "You found all the matches!", "Game Over", JOptionPane.INFORMATION_MESSAGE);
+                if (gameTimer != null)
+                    gameTimer.stop();
+                showGameOverScreen();
             }
         } else {
-            // No match, flip them back
             firstSelectedCard.flipDown();
             secondSelectedCard.flipDown();
         }
@@ -156,24 +187,73 @@ public class MatchTheTerror extends JFrame {
         secondSelectedCard = null;
     }
 
+    private void showGameOverScreen() {
+        JPanel overlay = new JPanel(new GridBagLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.setColor(new Color(0, 0, 0, 200));
+                g.fillRect(0, 0, getWidth(), getHeight());
+            }
+        };
+        overlay.setOpaque(false);
+
+        JPanel messagePanel = new JPanel();
+        messagePanel.setLayout(new BoxLayout(messagePanel, BoxLayout.Y_AXIS));
+        messagePanel.setOpaque(false);
+
+        JLabel gameOverLabel = new JLabel("GAME OVER", SwingConstants.CENTER);
+        gameOverLabel
+                .setFont(customTitleFont != null ? customTitleFont.deriveFont(80f) : new Font("Serif", Font.BOLD, 80));
+        gameOverLabel.setForeground(new Color(255, 60, 60));
+        gameOverLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel subtitleLabel = new JLabel("You found all the matches!", SwingConstants.CENTER);
+        subtitleLabel
+                .setFont(customCardFont != null ? customCardFont.deriveFont(32f) : new Font("Arial", Font.BOLD, 32));
+        subtitleLabel.setForeground(Color.WHITE);
+        subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        long timeTaken = startTime > 0 ? (System.currentTimeMillis() - startTime) / 1000 : 0;
+        long minutes = timeTaken / 60;
+        long seconds = timeTaken % 60;
+        JLabel timeLabel = new JLabel(String.format("Time: %02d:%02d", minutes, seconds), SwingConstants.CENTER);
+        timeLabel.setFont(customCardFont != null ? customCardFont.deriveFont(28f) : new Font("Arial", Font.BOLD, 28));
+        timeLabel.setForeground(new Color(200, 200, 200));
+        timeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        messagePanel.add(gameOverLabel);
+        messagePanel.add(Box.createVerticalStrut(20));
+        messagePanel.add(subtitleLabel);
+        messagePanel.add(Box.createVerticalStrut(15));
+        messagePanel.add(timeLabel);
+
+        overlay.add(messagePanel);
+
+        overlay.addMouseListener(new java.awt.event.MouseAdapter() {
+        });
+
+        setGlassPane(overlay);
+        overlay.setVisible(true);
+    }
+
     private class Card extends JButton implements ActionListener {
         private int pairId;
         private String faceText;
         private boolean isFaceUp = false;
         private boolean isMatched = false;
         private Image faceImage;
-        
-        // Animation fields
+
         private Timer animTimer;
         private double scaleX = 1.0;
         private boolean isAnimating = false;
-        private int flippingHalf = 0; // 0=none, 1=shrinking, 2=expanding
+        private int flippingHalf = 0;
         private boolean targetFaceUp;
-        
+
         public Card(int pairId, String faceText, String type, String imageFilename) {
             this.pairId = pairId;
             this.faceText = faceText;
-            
+
             if (imageFilename != null) {
                 try {
                     faceImage = ImageIO.read(new File("images/" + imageFilename));
@@ -184,22 +264,21 @@ public class MatchTheTerror extends JFrame {
                     faceImage = new ImageIcon("images/" + imageFilename).getImage();
                 }
             }
-            
-            // Initial appearance (face down)
+
             setFaceDownAppearance();
             setFocusPainted(false);
             setContentAreaFilled(false);
             setBorderPainted(false);
             setPreferredSize(new Dimension(200, 200));
-            
+
             addActionListener(this);
-            
+
             animTimer = new Timer(15, e -> {
-                if (flippingHalf == 1) { // shrinking
+                if (flippingHalf == 1) {
                     scaleX -= 0.1;
                     if (scaleX <= 0.01) {
                         scaleX = 0.01;
-                        flippingHalf = 2; // start expanding
+                        flippingHalf = 2;
                         isFaceUp = targetFaceUp;
                         if (isFaceUp) {
                             setFaceUpAppearance();
@@ -207,7 +286,7 @@ public class MatchTheTerror extends JFrame {
                             setFaceDownAppearance();
                         }
                     }
-                } else if (flippingHalf == 2) { // expanding
+                } else if (flippingHalf == 2) {
                     scaleX += 0.1;
                     if (scaleX >= 1.0) {
                         scaleX = 1.0;
@@ -219,21 +298,21 @@ public class MatchTheTerror extends JFrame {
                 repaint();
             });
         }
-        
+
         private void setFaceDownAppearance() {
             setText("?");
             setFont(customCardFont);
             setForeground(new Color(220, 220, 220));
             setIcon(null);
         }
-        
+
         private void setFaceUpAppearance() {
             if (faceImage != null) {
                 setText("");
                 setFont(customCardFont);
             } else {
                 setText("<html><center>" + faceText.replaceAll(" ", "<br>") + "</center></html>");
-                if (faceText.length() <= 2) { // Likely an emoji or short code
+                if (faceText.length() <= 2) {
                     setFont(new Font("SansSerif", Font.PLAIN, 65));
                 } else {
                     setFont(customCardFont);
@@ -246,14 +325,10 @@ public class MatchTheTerror extends JFrame {
             return pairId;
         }
 
-        public boolean isMatched() {
-            return isMatched;
-        }
-
         public void setMatched(boolean matched) {
             isMatched = matched;
-            setForeground(new Color(200, 255, 200)); // Pale green text
-            setEnabled(false); // Disable interaction once matched
+            setForeground(new Color(200, 255, 200));
+            setEnabled(false);
         }
 
         public void flipUp() {
@@ -267,17 +342,22 @@ public class MatchTheTerror extends JFrame {
                 startFlip(false);
             }
         }
-        
+
         private void startFlip(boolean faceUp) {
             targetFaceUp = faceUp;
             isAnimating = true;
-            flippingHalf = 1; // start shrinking
+            flippingHalf = 1;
             animTimer.start();
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            // Do nothing if card is already face up or game is checking a match or currently animating
+            if (startTime == 0) {
+                startTime = System.currentTimeMillis();
+                if (gameTimer != null)
+                    gameTimer.start();
+            }
+
             if (isFaceUp || isMatched || timer.isRunning() || isAnimating) {
                 return;
             }
@@ -288,50 +368,46 @@ public class MatchTheTerror extends JFrame {
                 firstSelectedCard = this;
             } else if (secondSelectedCard == null) {
                 secondSelectedCard = this;
-                // Start a short delay before checking to let user see the card
                 timer.start();
             }
         }
-        
+
         @Override
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            
+
             int w = getWidth();
             int h = getHeight();
-            
+
             if (isAnimating) {
                 double sx = Math.max(scaleX, 0.01);
-                // Translate to center so it scales around its horizontal center
                 g2.translate(w / 2.0 * (1.0 - sx), 0);
                 g2.scale(sx, 1.0);
             }
-            // Draw rounded background with gradient
             GradientPaint gp;
             if (isMatched) {
-                gp = new GradientPaint(0, 0, new Color(50, 120, 50), 0, h, new Color(10, 40, 10)); // Toxic green gradient
+                gp = new GradientPaint(0, 0, new Color(50, 120, 50), 0, h, new Color(10, 40, 10));
             } else if (isFaceUp) {
-                gp = new GradientPaint(0, 0, new Color(150, 20, 20), 0, h, new Color(50, 5, 5)); // Blood red gradient
+                gp = new GradientPaint(0, 0, new Color(150, 20, 20), 0, h, new Color(50, 5, 5));
             } else {
-                gp = new GradientPaint(0, 0, new Color(60, 60, 60), 0, h, new Color(20, 20, 20)); // Dark iron gradient
+                gp = new GradientPaint(0, 0, new Color(60, 60, 60), 0, h, new Color(20, 20, 20));
             }
             g2.setPaint(gp);
             g2.fillRoundRect(0, 0, w, h, 30, 30);
-            
+
             if ((isFaceUp || isMatched) && faceImage != null) {
                 int pad = 15;
                 Shape oldClip = g2.getClip();
-                RoundRectangle2D rect = new RoundRectangle2D.Float(pad, pad, w - 2*pad, h - 2*pad, 15, 15);
+                RoundRectangle2D rect = new RoundRectangle2D.Float(pad, pad, w - 2 * pad, h - 2 * pad, 15, 15);
                 g2.setClip(rect);
-                g2.drawImage(faceImage, pad, pad, w - 2*pad, h - 2*pad, this);
+                g2.drawImage(faceImage, pad, pad, w - 2 * pad, h - 2 * pad, this);
                 g2.setClip(oldClip);
             }
-            
-            // Draw a subtle thin border
+
             g2.setColor(new Color(255, 255, 255, 40));
-            g2.drawRoundRect(0, 0, w-1, h-1, 30, 30);
-            
+            g2.drawRoundRect(0, 0, w - 1, h - 1, 30, 30);
+
             super.paintComponent(g2);
             g2.dispose();
         }
